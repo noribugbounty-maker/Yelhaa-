@@ -1,0 +1,17 @@
+# Affinage local — CPU uniquement. Python 3.11+.
+#
+# Installer PyTorch EN PREMIER depuis l'index CPU, pour ne jamais tirer une
+# version CUDA (plusieurs Go inutiles ici) :
+#
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r ai-training/requirements.txt
+#
+# Aucun de bitsandbytes, flash-attn, xformers, deepspeed n'est requis.
+
+torch>=2.4,<3
+transformers>=4.51,<5      # Qwen3 est pris en charge à partir de 4.51
+peft>=0.15,<1
+accelerate>=1.0,<2         # requis par transformers.Trainer
+safetensors>=0.4
+pyyaml>=6.0
+pytest>=8.0

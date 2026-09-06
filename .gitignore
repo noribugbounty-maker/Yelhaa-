@@ -1,0 +1,48 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+
+# production
+/build
+
+# misc
+.DS_Store
+desktop.ini
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env — never commit any real value
+.env
+.env.local
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# vercel
+.vercel
+
+# ai-training — artefacts lourds (checkpoints, adaptateur, GGUF), environnement
+# Python et données utilisateur exportées. Les .gitkeep gardent l'arborescence.
+/ai-training/outputs/**/*
+!/ai-training/outputs/**/
+!/ai-training/outputs/**/.gitkeep
+/ai-training/.venv/
+/ai-training/tools/
+/ai-training/**/__pycache__/
+/ai-training/.pytest_cache/
+/ai-training/dataset/raw/generations-*.jsonl
+
+# graphe généré (Obsidian / Graphify) — jamais importé par l'app
+/graphify-out/

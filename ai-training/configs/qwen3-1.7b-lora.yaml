@@ -1,0 +1,61 @@
+# Affinage LoRA de Qwen3-1.7B — CPU seul, 16 Go de RAM (Ryzen 5 7520U).
+#
+# Toute clé inconnue est une erreur (protection contre les fautes de frappe).
+# Les chemins relatifs s'entendent depuis ai-training/.
+
+# --- modèle et chemins -------------------------------------------------------
+model_name: Qwen/Qwen3-1.7B
+output_dir: outputs/checkpoints      # checkpoints reprenables (checkpoint-<pas>/)
+adapter_dir: outputs/adapter         # adaptateur LoRA final + tokenizer
+train_file: dataset/splits/train.jsonl
+validation_file: dataset/splits/validation.jsonl
+
+# --- optimisation ------------------------------------------------------------
+learning_rate: 2e-4
+num_train_epochs: 2
+# max_steps: 20                      # décommenter pour un essai court (prime sur les époques)
+batch_size: 1                        # per_device_train_batch_size — ne pas augmenter sur 16 Go
+gradient_accumulation_steps: 8       # lot effectif = 8 exemples
+max_seq_length: 2048                 # en cas de manque de mémoire : 1024 (voir README, « Limites »)
+warmup_ratio: 0.05
+weight_decay: 0.01
+lr_scheduler_type: cosine
+max_grad_norm: 1.0
+
+# --- LoRA --------------------------------------------------------------------
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+# Couches linéaires de Qwen3 (attention + MLP). Vérifiées contre le modèle
+# chargé : une cible absente arrête le script avec la liste des couches réelles.
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+# --- journalisation, checkpoints, évaluation ----------------------------------
+logging_steps: 1
+save_steps: 10                       # un checkpoint tous les 10 pas (= 80 exemples)
+save_total_limit: 3                  # les plus anciens sont supprimés
+evaluation_strategy: epoch           # no | steps | epoch
+# eval_steps: 10                     # requis si evaluation_strategy: steps
+eval_max_examples: 32                # borne le coût de chaque évaluation sur CPU
+
+# --- reproductibilité et matériel --------------------------------------------
+seed: 42
+gradient_checkpointing: true
+cpu_threads: null                    # null → YELHAA_TRAIN_THREADS, sinon min(6, cœurs - 2)
+torch_dtype: float32                 # float32 (plus rapide sur Zen 2) | bfloat16 (moitié de RAM, plus lent)
+
+# --- formatage ---------------------------------------------------------------
+# Message système ajouté aux exemples qui n'en ont pas. Laisser vide pour
+# n'apprendre que « brief → prompt » ; renseigner un fichier pour reproduire
+# le format d'appel du moteur (voir dataset/README.md).
+system_prompt: null
+system_prompt_file: null
+train_on_metadata: false             # les métadonnées ne deviennent jamais du texte d'entraînement
+enable_thinking: false               # gabarit Qwen3 sans bloc de réflexion (comme le moteur : think=false)
