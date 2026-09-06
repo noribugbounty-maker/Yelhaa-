@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
+import { LegalEntityGate } from "@/components/legal/legal-entity-gate";
 import { TermsBody } from "@/components/legal/terms-body";
 import { translate } from "@/lib/i18n/index";
 import { LOCALE_COOKIE, parseLocale } from "@/lib/i18n/types";
@@ -16,5 +17,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function TermsPage() {
-  return <TermsBody />;
+  return (
+    <LegalEntityGate>
+      <TermsBody />
+    </LegalEntityGate>
+  );
 }

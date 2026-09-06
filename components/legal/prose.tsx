@@ -1,8 +1,37 @@
 "use client";
 
+import { createContext, useContext } from "react";
+
 import { usePreferences } from "@/components/i18n/preferences-provider";
 import { LegalUpdated, MissingField } from "@/components/legal/legal-chrome";
 import { LEGAL_ENTITY } from "@/lib/config";
+
+export type LegalEntity = typeof LEGAL_ENTITY;
+
+const LegalEntityContext = createContext<LegalEntity>(LEGAL_ENTITY);
+
+/**
+ * Porte l'identité lue côté serveur (`LEGAL_*`) vers les champs rendus
+ * dans les documents client. Sans ce passage, `process.env.LEGAL_*` est
+ * vide dans le bundle et chaque ligne affiche « à compléter ».
+ */
+export function LegalEntityProvider({
+  entity,
+  children,
+}: {
+  entity: LegalEntity;
+  children: React.ReactNode;
+}) {
+  return (
+    <LegalEntityContext.Provider value={entity}>
+      {children}
+    </LegalEntityContext.Provider>
+  );
+}
+
+function useLegalEntity(): LegalEntity {
+  return useContext(LegalEntityContext);
+}
 
 /**
  * Briques de mise en page des documents légaux.
@@ -134,7 +163,7 @@ export function EntityField({
   label: string;
 }) {
   const { locale } = usePreferences();
-  const value = LEGAL_ENTITY[field];
+  const value = useLegalEntity()[field];
   const sep = locale === "fr" ? "\u00a0: " : ": ";
   if (value) {
     return (
@@ -163,7 +192,7 @@ export function EntityField({
  */
 export function EntityEmail({ label }: { label?: string }) {
   const { locale } = usePreferences();
-  const email = LEGAL_ENTITY.privacyEmail;
+  const email = useLegalEntity().privacyEmail;
   const sep = locale === "fr" ? "\u00a0: " : ": ";
   const prefix = label ? `${label}${sep}` : "";
   if (email) {
