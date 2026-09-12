@@ -1,0 +1,464 @@
+{
+  "summary": {
+    "health_score": 47,
+    "business_type": "SaaS — AI prompt engineering tool (freemium, 3 tiers: $0 / $9.99 / $39.99; Stripe + Supabase; Next.js App Router on Vercel)",
+    "audit_date": "2026-09-11, re-audited 2026-09-12",
+    "url": "https://yelhaa.info/",
+    "pages_crawled": 22,
+    "top_findings": [
+      "Every canonical, sitemap URL, Open Graph tag and JSON-LD URL points to http://localhost:3000 — the production build carries NEXT_PUBLIC_SITE_URL=http://localhost:3000, so Google discards all 20 sitemap entries and every social share renders without a preview card",
+      "The placeholder guard in lib/seo.ts only detects an empty origin, so a localhost value bypassed the Disallow:/ safety net in app/robots.ts that was designed to catch exactly this",
+      "/login and /signup are index,follow and declare the homepage as their canonical — an independent bug that survives the domain fix",
+      "A complete French translation (lib/i18n/fr.ts) is served on the same URLs via cookie, with no hreflang, the same canonical, and English metadata — entirely unindexable",
+      "No edge caching — Cache-Control: private, no-cache, no-store with X-Vercel-Cache: MISS on every request; the root layout's await cookies() and the sitewide Supabase middleware opt every marketing page out of static generation [CORRECTED 2026-09-12: this slot previously read 'No FAQPage or QAPage markup on 13 Q&A pages'. That was wrong — Google retired FAQ rich results for ALL sites on 2026-05-07, and the site's omission of FAQPage is a deliberate, documented, correct decision]"
+    ],
+    "quick_wins": [
+      "Set NEXT_PUBLIC_SITE_URL=https://yelhaa.info in Vercel Production and redeploy (5 min — fixes findings across every category)",
+      "Add robots: { index: false, follow: false } to /login and /signup (5 min, two lines)",
+      "Extend the existing BreadcrumbList component to /pricing, /build, /contact and /legal/* (under an hour; an active type with a live rich result, already correctly implemented on the FAQ articles)",
+      "Add www.yelhaa.info in Vercel with a 308 to the apex (5 min — currently fails DNS)",
+      "Populate Organization.sameAs and contactPoint from the env vars lib/config.ts already reads (15 min)"
+    ],
+    "reaudit_note": "Re-audit 2026-09-12 confirmed nothing has been deployed: identical build fingerprint (webpack-57103c76339c04b1.js), canonicals still http://localhost:3000, 0/20 sitemap URLs on the live host, /login still index,follow, www still unresolved, X-Vercel-Cache still MISS. Added this pass: SXO analysis, Common Crawl backlink check, drift baseline captured for 4 URLs. PSI rate-limited on a 4th attempt - no CWV data in this audit."
+  },
+  "categories": [
+    {
+      "name": "Technical SEO",
+      "score": 35,
+      "weight": 22,
+      "what_works": [
+        "HSTS max-age=63072000 with includeSubDomains and preload",
+        "Tight per-directive CSP with frame-ancestors 'none', object-src 'none', base-uri 'self', upgrade-insecure-requests",
+        "X-Frame-Options: DENY, X-Content-Type-Options: nosniff, strict-origin-when-cross-origin, restrictive Permissions-Policy including interest-cohort=()",
+        "HTTP to HTTPS returns 308; /pricing/ to /pricing returns 308 — no duplicate URLs",
+        "Genuine 404 status on missing pages, not a soft 200",
+        "Googlebot, bingbot, GPTBot, ClaudeBot and PerplexityBot all receive 200",
+        "Full page text present in server HTML — no JS execution needed to crawl",
+        "/_next/ is not blocked, so Google can render pages for mobile assessment",
+        "robots.txt disallow list correctly scoped to genuinely private routes",
+        "Flat, lowercase, hyphenated URLs with no query parameters"
+      ],
+      "findings": [
+        {
+          "title": "Every canonical, sitemap entry and robots directive points to http://localhost:3000",
+          "severity": "Critical",
+          "description": "robots.txt advertises 'Sitemap: http://localhost:3000/sitemap.xml'; all 20 sitemap <loc> values use the localhost host; every page's canonical, og:url, og:image and JSON-LD url do the same. Google rejects sitemap entries outside the serving host, so the site effectively has no sitemap. Root cause located in source: lib/seo.ts falls back to DEV_ORIGIN, and lib/config.ts reads NEXT_PUBLIC_SITE_URL, which the production build carries as http://localhost:3000. Proven set rather than unset because app/robots.ts emits the normal Allow:/ block rather than its isPlaceholderOrigin() Disallow:/ branch.",
+          "recommendation": "Set NEXT_PUBLIC_SITE_URL=https://yelhaa.info in Vercel Production and Preview, then redeploy — NEXT_PUBLIC_* is inlined at build time so the redeploy is mandatory. Verify with: curl -s https://yelhaa.info/sitemap.xml | grep -c yelhaa.info (expect 20)."
+        },
+        {
+          "title": "Placeholder guard only detects an empty origin, so localhost bypassed the safety net",
+          "severity": "Critical",
+          "description": "app/robots.ts has the right defence — serve Disallow:/ while the domain is unset — but isPlaceholderOrigin() in lib/seo.ts returns !SITE.url.trim(), which is false for 'http://localhost:3000'. The guard never fired and the site published broken canonicals silently.",
+          "recommendation": "Parse the origin and treat localhost, 127.0.0.1, *.local and unparseable values as placeholders. Consider throwing at build time when NODE_ENV is production and the origin is a placeholder."
+        },
+        {
+          "title": "No edge caching on any marketing page",
+          "severity": "High",
+          "description": "Five consecutive homepage requests all returned Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate with X-Vercel-Cache: MISS. Every visitor and crawler reaches the origin function. Cause: app/layout.tsx calls await cookies() for theme and locale, and middleware.ts runs Supabase updateSession across all matched routes — either alone opts out of static generation.",
+          "recommendation": "Read theme/locale cookies in a client component (the inline BOOTSTRAP script already applies them before paint), narrow the middleware matcher to skip public marketing routes, and add revalidate = 3600 to the (site) group. Target X-Vercel-Cache: HIT."
+        },
+        {
+          "title": "Eight internal links point at /chat, which is disallowed and redirects",
+          "severity": "Medium",
+          "description": "/chat is linked from 8 of 10 static pages while being listed under Disallow: /chat in robots.txt and returning 307 to /login for anonymous visitors. /account has the same pattern on 2 pages. Sitewide navigation into a blocked, redirecting URL wastes crawl budget and leaks internal link equity.",
+          "recommendation": "Render these links only for authenticated sessions, or add rel=\"nofollow\"."
+        },
+        {
+          "title": "www.yelhaa.info does not resolve",
+          "severity": "Medium",
+          "description": "https://www.yelhaa.info/ returns 000 (DNS failure). The apex works and http:// correctly 308s to https://, but anyone typing or linking the www host gets a connection error, and inbound links built on it are lost.",
+          "recommendation": "Add www.yelhaa.info in Vercel Settings → Domains and set it to 308-redirect to the apex."
+        }
+      ]
+    },
+    {
+      "name": "Content Quality",
+      "score": 52,
+      "weight": 23,
+      "what_works": [
+        "Clear, specific, human prose with no AI-tell phrasing — checked across all 22 pages",
+        "Concrete value proposition demonstrated by a worked example on the homepage rather than asserted",
+        "FAQ answers state real limits: quota behaviour, what is stored, which models run the engine, refund terms",
+        "Factual consistency verified — prices and quotas agree across pricing page, homepage, FAQ and lib/config.ts",
+        "No duplicate or near-duplicate pages; each of the 12 FAQ articles answers a distinct question",
+        "Privacy and terms pages are specific, jurisdiction-aware and well above template-boilerplate norm",
+        "Short paragraphs, meaningful subheadings, constrained line length",
+        "Zero filler and zero AI-pattern matches on the QRG scorer; zero AI-typical phrasing swaps needed; zero invisible/zero-width characters across all 22 pages",
+        "FAQ articles read at 62-80 Flesch (grade 4-7), squarely in the general-audience target band",
+        "Trustworthiness near-exemplary: verifiable French legal identity with SIREN, SIRET and EU VAT checkable against public registries"
+      ],
+      "findings": [
+        {
+          "title": "Almost no content targets the category's informational search demand",
+          "severity": "High",
+          "description": "4,859 words of body prose sitewide (chrome excluded), of which the privacy policy (1,117) and terms of service (1,026) are 44%. Category terms are effectively absent: 'prompt engineering' appears 2 times across the whole site; 'ai prompt', 'prompt generator', 'prompt optimizer', 'prompt template', 'prompt library', 'chatgpt' and 'llm' appear 0 times. 'data' (43) and 'account' (42) both outrank 'prompt' (41) in frequency. Meanwhile content/templates/ holds 1,000+ curated prompt templates, none published.",
+          "recommendation": "Publish 20–30 of the strongest templates behind a hub page organised by domain, each with an explanation of why the prompt is structured that way. Measure indexation, then scale. Do not bulk-publish 1,000 thin pages."
+        },
+        {
+          "title": "E-E-A-T signals are almost entirely absent",
+          "severity": "High",
+          "description": "No named author or team, no About page, no author credentials, no publication or update dates on any content, no external citations, no testimonials, case studies or third-party validation. Present and genuinely strong: legal identity on /legal/notice, a working contact route, and a detailed GDPR-specific privacy policy.",
+          "recommendation": "Add an About page; add updatedAt to content/faq.ts and surface it (content/faq.ts already has a position field); attribute authorship on guide and library content; add social proof only once it genuinely exists."
+        },
+        {
+          "title": "/build cannot rank as written",
+          "severity": "Medium",
+          "description": "53 words of body prose on the primary product page, which holds sitemap priority 0.9 and inbound links from all 8 marketing pages. The internal linking treats it as a key destination; the content does not support that.",
+          "recommendation": "Expand to 600–900 words: what the builder does, what goes in, what comes out, a worked end-to-end example, and who it is for."
+        },
+        {
+          "title": "The French translation is written but unpublished",
+          "severity": "Medium",
+          "description": "lib/i18n/fr.ts is fully translated and renders correctly, but lives at the same URLs as the English version and is therefore unindexable. Finished work earning nothing.",
+          "recommendation": "Move locale into the URL — see the On-Page finding for the full routing fix."
+        },
+        {
+          "title": "Duplicate meta descriptions on /login and /signup",
+          "severity": "Low",
+          "description": "Both inherit the site-default description — the only duplicate descriptions across 22 URLs.",
+          "recommendation": "Resolved by adding noindex to both auth pages."
+        },
+        {
+          "title": "No dates on any non-legal content",
+          "severity": "High",
+          "description": "'Last updated: 12 August 2026' appears on all three /legal/* pages. Nothing else carries a date — no ISO dates, no <time> elements, no datetime attributes anywhere on the homepage, the FAQ hub or the 12 FAQ articles. AI systems weight recency and discount undated content.",
+          "recommendation": "Add an updatedAt field to content/faq.ts (which already has a position field per article) and render it. The same field fixes the unreliable lastmod in sitemap.ts, currently new Date() at build time and identical for all 20 URLs."
+        }
+      ]
+    },
+    {
+      "name": "On-Page SEO",
+      "score": 50,
+      "weight": 20,
+      "what_works": [
+        "22 unique titles, all 15–56 characters — none truncate in SERPs",
+        "Unique meta descriptions on 20 of 22 URLs, most in the 100–155 character range",
+        "Exactly one descriptive <h1> per page with no heading-level skips",
+        "FAQ articles use the question verbatim as both <title> and <h1> — ideal for question-intent queries",
+        "FAQ descriptions generated from the answer text itself, so they never over-promise",
+        "Every public page reachable within one click of the homepage; the FAQ hub links all 12 articles",
+        "Canonical paths correctly normalised without trailing slashes, matching what the server serves"
+      ],
+      "findings": [
+        {
+          "title": "/login and /signup are indexable and declare the homepage as their canonical",
+          "severity": "High",
+          "description": "Both pages bypass pageMetadata() and set only a title, so they inherit the root layout's alternates.canonical = absoluteUrl('/') and robots index,follow. This is independent of the localhost bug and survives fixing it: once the domain is corrected, two thin auth forms will tell Google they are the homepage.",
+          "recommendation": "Add robots: { index: false, follow: false } and a self-referential canonical to both pages."
+        },
+        {
+          "title": "A complete French site exists on the same URLs and cannot be indexed",
+          "severity": "High",
+          "description": "Fetching with Cookie: yelhaa-locale=fr returns <html lang=\"fr\"> with a French h1 ('Transformez vos idées en meilleurs prompts.') under an English <title> and <meta description>, the same canonical, and zero hreflang tags on either variant. Google crawls without cookies so only ever sees English, and there is no URL at which the French content could be indexed.",
+          "recommendation": "Move locale into the URL via App Router sub-path routing; add self-referential canonicals per locale, localised metadata through pageMetadata(), reciprocal hreflang pairs plus x-default, and both locales in sitemap.ts."
+        },
+        {
+          "title": "Titles describe the interface rather than the search intent",
+          "severity": "Medium",
+          "description": "Titles are clean and unique but written as app navigation labels — 'Prompt Builder', 'Pricing', 'Contact'. The category has real demand around prompt engineering, AI prompt generator, prompt optimizer and ChatGPT prompt builder; none of these terms appear in any title.",
+          "recommendation": "Keep the '%s — Yelhaa' template and the homepage title. Rewrite /build, /pricing and /faq for intent, one page at a time after the canonical fix so effects stay attributable."
+        }
+      ]
+    },
+    {
+      "name": "Schema / Structured Data",
+      "score": 45,
+      "weight": 10,
+      "what_works": [
+        "Every JSON-LD block parses cleanly — no syntax errors or malformed nesting anywhere",
+        "BreadcrumbList correctly implemented across all 12 FAQ articles",
+        "SoftwareApplication uses appropriate applicationCategory and operatingSystem values",
+        "Offer prices, currencies and plan names match the visible page content exactly",
+        "Schema emitted server-side in the initial HTML, readable by non-rendering crawlers",
+        "Markup generated from shared constants rather than hand-written per page",
+        "FAQPage deliberately and correctly excluded, with the reasoning documented in code — the type's rich results were retired for all sites on 2026-05-07",
+        "Zero Microdata and zero RDFa — JSON-LD used exclusively, matching Google's stated preference, with no format mixing"
+      ],
+      "findings": [
+        {
+          "title": "Every URL inside the structured data points to localhost",
+          "severity": "Critical",
+          "description": "43 URL values across 15 pages use http://localhost:3000: Organization.url and .logo, WebSite.url, SoftwareApplication.url, all three Offer.url values, and 36 BreadcrumbList itemListElement.item values across the 12 FAQ articles. Organization.logo must be fetchable for Google to use it, so the logo is dropped and the entity is not associated with the domain.",
+          "recommendation": "Resolves automatically with the NEXT_PUBLIC_SITE_URL fix — the generators already build these from absoluteUrl(). No schema code changes needed for this item."
+        },
+        {
+          "title": "Organization is missing the fields that establish the entity",
+          "severity": "Medium",
+          "description": "Current markup has only name, url, slogan and logo. Missing sameAs, contactPoint, description and foundingDate — sameAs in particular is how Google links a site to its social profiles and disambiguates the brand.",
+          "recommendation": "Populate sameAs from the NEXT_PUBLIC_URL_* variables lib/config.ts already reads, filtering empties; add contactPoint pointing at /contact with availableLanguage [en, fr]; mirror the real publisher details from /legal/notice. Never invent social profiles."
+        },
+        {
+          "title": "SoftwareApplication is missing description and a price range",
+          "severity": "Medium",
+          "description": "No description or softwareVersion, and the three Offer objects are a bare array rather than an AggregateOffer, so the price range is not legible to Google.",
+          "recommendation": "Add description and wrap the offers in AggregateOffer with lowPrice 0, highPrice 39.99, offerCount 3. Do not add aggregateRating until genuine user ratings are displayed on the page — marking up invisible ratings risks a manual action."
+        },
+        {
+          "title": "FAQPage correctly absent — do not add it (corrects 2026-09-11 audit)",
+          "severity": "Info",
+          "description": "The 2026-09-11 audit recommended adding FAQPage to /faq and QAPage to each /faq/[slug] at HIGH priority. That was wrong. Google retired FAQ rich results for ALL sites on 2026-05-07 (superseding the Aug 2023 gov/health restriction); docs carried a deprecation notice 2026-05-08 and were removed 2026-06-15. Any AI-citation benefit is unconfirmed. QAPage is reserved for genuine user Q&A where visitors submit answers and would misdescribe publisher-authored FAQ answers. The omission is a deliberate decision documented in components/seo/json-ld.tsx and it is correct.",
+          "recommendation": "Add neither. Keep the existing BreadcrumbList on the FAQ articles. See SCHEMA-REPORT.md."
+        }
+      ]
+    },
+    {
+      "name": "Performance (CWV)",
+      "score": 60,
+      "weight": 10,
+      "what_works": [
+        "TTFB 237–375 ms cold across five sequential requests; 22 ms warm",
+        "DOMContentLoaded 320 ms, load event 386 ms, 26 resources all returning 200, 0 pending",
+        "Zero console errors on every page tested",
+        "polyfills chunk correctly marked noModule so modern browsers never download its 41 KB",
+        "Fonts self-hosted as woff2 via next/font with display: swap — no external font requests, no FOIT",
+        "Only two CSS files, 14 KB combined",
+        "No render-blocking third-party scripts; CSP permits only Stripe, which marketing pages do not load",
+        "No <img> tags anywhere — no image weight, no lazy-loading debt, no image-driven CLS",
+        "SSR streaming verified working end to end: 3 Suspense boundaries resolve, all templates consumed, h1 relocated into <main> with a real layout box - no hydration mismatch, no blocking JS error, no failed chunk"
+      ],
+      "findings": [
+        {
+          "title": "Core Web Vitals could not be measured — no lab or field data in this report",
+          "severity": "Info",
+          "description": "PageSpeed Insights returned 'rate limit exceeded (240 QPM / 25,000 QPD)' on three attempts spread across the audit; no PAGESPEED_API_KEY is configured so requests fall back to an exhausted shared quota. CrUX field data requires Google API credentials that are not set up, and the domain is likely below CrUX's traffic threshold regardless. Two local measurements were collected and discarded as contaminated: headless Chromium took ~43 s to settle, but the page contains perpetual animations that prevent any idle heuristic from resolving; the in-app browser pane showed content behind the loading spinner for 50 s+, but reported itself hidden throughout, and Chrome throttles timers, rAF and IntersectionObserver in hidden tabs — which the site's scroll-reveal system depends on. VERIFIED 2026-09-12 by a dedicated SSR/hydration probe (clean headless Chromium, visible tab): the suspected rendering failure does not exist. main.innerText 2623 chars, 0 templates left, 3 Suspense boundaries resolved (<!--$?--> x3 -> <!--$--> x3), h1 opacity 1 with a 689x182 box, 0 page errors, 0 failed requests, 0 4xx/5xx across 37 responses. The single console message is a three.js deprecation warning. See findings/ssr-hydration.md.",
+          "recommendation": "Run PageSpeed Insights directly at https://pagespeed.web.dev/ for https://yelhaa.info/ and /pricing before acting on performance. Optionally configure a PAGESPEED_API_KEY for automated checks."
+        },
+        {
+          "title": "Above-the-fold content sits behind a route-level Suspense boundary",
+          "severity": "Medium",
+          "description": "app/(site)/loading.tsx renders a full-height centred spinner (min-h-[60dvh]) for the whole content area while the route resolves, and the homepage hero — containing the LCP element — is inside that boundary. The server HTML is complete and arrives in ~300 ms so this is not a crawler problem, but the LCP candidate cannot paint until hydration completes, behind ~250 KB of JS and heavy client sections (an animated globe in Locations, a scrollable PreviewGallery).",
+          "recommendation": "Check with PSI first. If LCP is poor, render the hero outside the Suspense boundary so the headline paints from server HTML, and defer the globe and gallery below the fold."
+        },
+        {
+          "title": "No edge caching — every request reaches the origin",
+          "severity": "Medium",
+          "description": "Cache-Control: private, no-cache, no-store with X-Vercel-Cache: MISS on all five consecutive requests. TTFB is acceptable from one location under no load, but this is the difference between a CDN-served asset and a function invocation on every hit.",
+          "recommendation": "See the Technical SEO finding for the full fix."
+        },
+        {
+          "title": "Scroll-reveal animation gates content visibility on JavaScript",
+          "severity": "Low",
+          "description": "components/site/reveal.tsx starts elements at opacity 0 and adds .is-visible via IntersectionObserver. The component documents the intent correctly ('if nothing runs, everything is visible') and has a prefers-reduced-motion branch, but if the base stylesheet applies opacity: 0 unconditionally, any observer failure leaves content permanently invisible. Does not affect Googlebot, which executes JavaScript.",
+          "recommendation": "Verify the CSS rest state defaults to visible without JS — add a @media (scripting: none) fallback, or drive the hidden state from a class added by JS rather than from the base stylesheet."
+        },
+        {
+          "title": ".reveal sections stay at opacity 0 without JavaScript",
+          "severity": "Low",
+          "description": "app/globals.css line 454 sets .reveal { opacity: 0 } as the base rule; line 458 restores opacity via .reveal.is-visible, added by the IntersectionObserver in components/site/reveal.tsx. The only unconditional override (line 732, opacity: 1) sits inside @media (prefers-reduced-motion: reduce) at line 704. So without JS and without reduced-motion preference, .reveal content renders invisible. The component's own comment states 'if nothing runs, everything is visible' - the CSS does not honour that. No effect on Googlebot (executes JS) or on text extraction (reads the DOM regardless of opacity), but real for a visitor with JS disabled.",
+          "recommendation": "Wrap the base .reveal rule in @media (scripting: enabled), or have the component add the 'reveal' class itself on mount rather than server-rendering it. Diff in findings/ssr-hydration.md."
+        }
+      ]
+    },
+    {
+      "name": "AI Search Readiness",
+      "score": 48,
+      "weight": 10,
+      "what_works": [
+        "GPTBot, ClaudeBot, PerplexityBot, Googlebot and bingbot all receive 200 — no AI crawler is blocked",
+        "Full page text present in the server HTML, verified with JavaScript disabled — most AI crawlers do not execute JS, unlike Googlebot",
+        "FAQ architecture (one question per URL, question as h1, direct answer) is the ideal shape for AI citation and only needs labelling",
+        "Clean semantic HTML with correct heading hierarchy and no level skips",
+        "Factual consistency across pages means no contradictory signal for an extractor",
+        "FAQ names specifics rather than hedging — which models run the engine, what happens at quota, what is stored",
+        "No content gated behind interaction, cookie walls or consent banners",
+        "Every search-citability crawler allowed and separately verified: OAI-SearchBot (ChatGPT Search), Claude-SearchBot (Claude search), PerplexityBot, Googlebot (AI Overviews and AI Mode), bingbot, Applebot — 18 AI user-agents tested, all 200",
+        "No snippet controls anywhere (nosnippet, data-nosnippet, max-snippet, X-Robots-Tag all absent) — full AI Overviews and AI Mode eligibility",
+        "Answer-first FAQ architecture already built: one question per URL, question as h1, direct answer immediately after — the ideal shape for AI extraction"
+      ],
+      "findings": [
+        {
+          "title": "Zero brand presence anywhere on the web — the binding constraint on AI visibility",
+          "severity": "High",
+          "description": "Searches for the brand, the domain and the legal entity returned no results referencing this company at all: no Wikipedia or Wikidata entry, no Reddit, no YouTube, no LinkedIn, no press, and absence from every 'best prompt engineering tools 2026' roundup found. Brand mentions correlate roughly 3x more strongly with AI visibility than backlinks (Ahrefs, 75,000 brands: YouTube ~0.737, Reddit high, Wikipedia high, vs Domain Rating ~0.266). ChatGPT draws ~48% of citations from Wikipedia and ~11% from Reddit; Perplexity ~47% from Reddit. A brand absent from both is structurally unlikely to be cited regardless of on-site quality.",
+          "recommendation": "Start now, since this is the slowest signal to move: YouTube demos of the product, genuine participation in r/PromptEngineering and similar (contribute answers, not links — Google explicitly calls mention-farming unhelpful), a LinkedIn company page so Organization.sameAs has something real to point at, and submission to category directories. No on-site change substitutes for this."
+        },
+        {
+          "title": "Citations would resolve to http://localhost:3000",
+          "severity": "High",
+          "description": "Every canonical, og:url and schema url names localhost, so an AI system that does cite Yelhaa has no correct URL to attribute it to. This nullifies AI visibility work until fixed.",
+          "recommendation": "Fix NEXT_PUBLIC_SITE_URL — see the Technical SEO finding."
+        },
+        {
+          "title": "No entity or authorship signals",
+          "severity": "Medium",
+          "description": "AI systems weight provenance heavily. Absent: sameAs links, author attribution, publication or update dates, an About page, external citations, third-party corroboration. The Organization block carries only name, url, slogan and logo.",
+          "recommendation": "Complete the Organization entity, add an About page, and surface dates on FAQ articles."
+        },
+        {
+          "title": "Content depth limits what there is to cite",
+          "severity": "Medium",
+          "description": "Roughly 5,500 indexable words, most of it legal text. FAQ answers are the strongest material at 110–183 words each — good shape, shallow substance. The unpublished library of 1,000+ prompt templates is the obvious remedy: explained templates are exactly the specific, attributable, self-contained content these systems quote.",
+          "recommendation": "Publish the prompt library incrementally with reasoning attached to each template."
+        },
+        {
+          "title": "No llms.txt",
+          "severity": "Info",
+          "description": "https://yelhaa.info/llms.txt returns 404. Google's AI optimization guide (2026-05-15, clarified 2026-06-15) states that llms.txt and other AI-text files are not needed for Google Search and neither help nor hurt visibility or rankings. A 300k-domain SE Ranking study and an OtterlyAI server-log audit found no evidence of major AI systems fetching it. No citation-ranking weight is assigned.",
+          "recommendation": "Optional and near-free, but do not treat it as a GEO lever — community advice recommending it contradicts Google's primary source. It must not displace schema, content or the canonical fix."
+        },
+        {
+          "title": "FAQ answers fall below the optimal AI citation passage length",
+          "severity": "Medium",
+          "description": "Optimal citation block is 134-167 words. Ten of twelve FAQ articles run 73-117 words, most 50-60 words short; only /contact (154) and /faq/cancel-subscription-and-refunds (148) land in the band. Front-loading is already correct — question as h1, direct answer immediately after, with ~44% of AI citations coming from the first 30% of a page. The structure is right; the answers stop too early. Separately, there is no definition of prompt engineering anywhere on the site — only four 'X is...' constructions sitewide, two of them internal jargon.",
+          "recommendation": "Extend each FAQ answer to roughly 140 words with one worked example and one concrete number. Add a real 'Prompt engineering is...' definition in the first 60 words of /build or a new guide page."
+        }
+      ]
+    },
+    {
+      "name": "Images",
+      "score": 55,
+      "weight": 5,
+      "what_works": [
+        "Zero <img> elements across all 22 pages — every graphic is inline SVG or CSS",
+        "No missing alt attributes, no oversized images, no format conversion work, no lazy-loading debt, no image-driven layout shift",
+        "Zero image bytes on the critical path",
+        "Open Graph image generated correctly at the edge: 200, image/png, 38,586 bytes, 1200×630",
+        "og:image:width, og:image:height and og:image:alt all declared",
+        "/icon.svg returns 200 image/svg+xml; /apple-icon returns 200 PNG at 180×180"
+      ],
+      "findings": [
+        {
+          "title": "The Open Graph image is advertised at an unreachable URL",
+          "severity": "High",
+          "description": "The image itself is correct, but every page advertises it as http://localhost:3000/opengraph-image. LinkedIn, X, Slack, Discord, WhatsApp and iMessage cannot fetch that host, so every share renders as bare text with no preview card. twitter:card is set to summary_large_image, which promises a large image and supplies none — the card degrades to plain text rather than a small-image fallback.",
+          "recommendation": "Resolves entirely with the NEXT_PUBLIC_SITE_URL fix; no image work required. After redeploy, verify with the LinkedIn Post Inspector and X Card Validator and force a re-scrape, since both cache aggressively."
+        },
+        {
+          "title": "All pages share one generic Open Graph image",
+          "severity": "Low",
+          "description": "No per-page social preview variants. lib/seo.ts already attaches the image explicitly on every page that calls pageMetadata(), so the wiring exists.",
+          "recommendation": "Add route-level opengraph-image.tsx files for /pricing and the FAQ articles once higher-priority items are closed."
+        }
+      ]
+    },
+    {
+      "name": "Search Experience (SXO)",
+      "score": 35,
+      "weight": 0,
+      "_note": "Diagnostic category - not part of the weighted health score.",
+      "what_works": [
+        "Persona B (developer/team evaluating a tool) is genuinely well served: clear positioning, a demo that shows rather than tells, transparent three-tier pricing, and trust signals well above early-stage norm - scored 7/10",
+        "The homepage worked example (idea -> Intent/Context/Structure/Constraints -> finished prompt) is the right idea, executed well",
+        "Pricing is honest and legible: no hidden quotas, no dark patterns, plan differences stated plainly",
+        "The FAQ answers real pre-purchase objections - quota behaviour, data handling, cancellation, which models run the engine",
+        "No SERP-to-page deception: titles and descriptions accurately describe page contents, so no mismatch-driven bounce risk"
+      ],
+      "findings": [
+        {
+          "title": "Transactional SERP promises free and no-signup; the product requires an account and caps at 3/month",
+          "severity": "High",
+          "description": "Live SERP check for 'ai prompt generator tool free' (2026-09-12) returned six competitors, every one leading with free/unlimited/no-login: TripleTen ('totally free, no sign-up required'), GeneratePrompt.net ('no sign-up and unlimited use'), Feedough ('Unlimited & No Login'), Promptsera ('100% free, no login required'), Quillbot, ryrob. Yelhaa offers 3 generations/month behind an account, with /build at 53 words and a CTA into authentication. A searcher from this cluster meets a quota and a signup wall where the SERP promised neither. This is an offer mismatch, not a page defect - rewriting /build will not fix it.",
+          "recommendation": "Preferred: let the first generation run without an account and capture the email after the user sees the output (the FAQ already promises the typed idea survives authentication, so the plumbing exists). Alternative: target qualified variants ('prompt optimizer for developers', 'structured prompt builder for teams') where signup is normal and depth differentiates. This is a product decision, not an SEO fix - flagged because the SEO consequence is real."
+        },
+        {
+          "title": "No page exists for the informational cluster, which is where the category's volume sits",
+          "severity": "High",
+          "description": "Live SERP check for 'how to write better prompts / prompt engineering guide' (2026-09-12) returned 100% long-form editorial: learnprompting.org, eWeek cheat sheet, IABAC guide, MoreOnlineTools 'Complete Guide (2026)', GPT Central. No product or tool landing pages rank. Yelhaa has no content of this type at all; /build (53 words) is a different category of page, not a weaker entry in the same one. Persona C (learner, largest volume) scores 2/10 with zero eligible pages.",
+          "recommendation": "Publish 20-30 explained templates from content/templates/ in guide format, and add a real 'Prompt engineering is...' definition on /build. This is the cluster the site is best equipped to win: the intent matches its subject, the format is producible, and the raw material already exists in the repository."
+        },
+        {
+          "title": "Persona A (casual searcher) scores 2/10 end to end",
+          "severity": "Medium",
+          "description": "Scored across SERP presence (does not rank), landing experience (/build, 53 words, no explanation of what happens next), and task completion (account required, 3/month cap). The worst-served persona, and the one the highest-volume transactional SERP sends.",
+          "recommendation": "Addressed by the two items above; no separate work."
+        }
+      ]
+    },
+    {
+      "name": "Backlinks & Off-site",
+      "score": 10,
+      "weight": 0,
+      "_note": "Diagnostic category - not part of the weighted health score. Tier 0 data only.",
+      "what_works": [
+        "No toxic-link exposure, nothing to disavow, no anchor-text over-optimisation - the cleanest possible starting position for a new domain"
+      ],
+      "findings": [
+        {
+          "title": "Domain absent from the Common Crawl web graph",
+          "severity": "Info",
+          "description": "commoncrawl_graph.py against release cc-main-2026-jan-feb-mar returns in_crawl: false, in_rankings: false, with null PageRank, harmonic centrality and linking-host count. This does not prove zero backlinks - Common Crawl is a sample, not a census, and a brand-new domain being absent is expected. But it corroborates the independent brand-mention research in GEO-ANALYSIS.md, which found no web references to Yelhaa on any platform. Two independent methods agreeing makes the conclusion safe: effectively no inbound link or mention profile.",
+          "recommendation": "Sequence matters: fix the origin, then publish content worth linking to, then earn links and mentions. Link acquisition before the canonical fix is wasted - coverage earned now would point at a site Google cannot index properly. Verify in Bing Webmaster Tools when doing GSC (free, and it unlocks Tier 1 backlink data for this toolchain)."
+        },
+        {
+          "title": "No backlink API credentials configured - most of this category is unassessed",
+          "severity": "Info",
+          "description": "Tier 0 only. Not assessed: referring domains and their quality, anchor-text distribution, toxic links, competitor link gap, link velocity, lost backlinks, internal PageRank flow. No claim is made about any of them.",
+          "recommendation": "Bing Webmaster Tools API (free) is the cheapest upgrade and unlocks referring domains plus anchor text. Moz Link Explorer has a free tier for DA/PA and spam score."
+        }
+      ]
+    }
+  ],
+  "action_plan": {
+    "phases": [
+      {
+        "name": "Phase 1: Critical Fixes",
+        "timeframe": "Week 1 (~1 hour of work)",
+        "items": [
+          "Set NEXT_PUBLIC_SITE_URL=https://yelhaa.info in Vercel Production and Preview, then redeploy (NEXT_PUBLIC_* is inlined at build time — the redeploy is mandatory)",
+          "Harden isPlaceholderOrigin() in lib/seo.ts to treat localhost, 127.0.0.1 and *.local as placeholders, so the existing Disallow:/ safety net in app/robots.ts can catch this class of error",
+          "Add robots: { index: false, follow: false } and self-referential canonicals to /login and /signup",
+          "Add www.yelhaa.info in Vercel with a 308 redirect to the apex",
+          "Verify the property in Google Search Console, submit the sitemap, request indexing on /, /build, /pricing and /faq; repeat in Bing Webmaster Tools"
+        ]
+      },
+      {
+        "name": "Phase 2: High-Impact Improvements",
+        "timeframe": "Weeks 2-3",
+        "items": [
+          "WITHDRAWN — 'Add FAQPage/QAPage schema' has been removed from the plan. Google retired FAQ rich results for all sites on 2026-05-07 and QAPage would misdescribe publisher-authored answers; the site's omission is deliberate and correct. Replacement: extend the existing BreadcrumbList component to /pricing, /build, /contact and /legal/* (1-2 h, active type with a live rich result)",
+          "Complete the Organization entity with sameAs, contactPoint, description and the real publisher details from /legal/notice",
+          "Expand /build from 95 to 600–900 words",
+          "Restore edge caching: move cookie reads out of the root layout, narrow the middleware matcher, add revalidate to the (site) group; target X-Vercel-Cache: HIT",
+          "Run PageSpeed Insights manually and act on real LCP data; if poor, move the hero outside the loading.tsx Suspense boundary",
+          "Clean up internal links to /chat and /account"
+        ]
+      },
+      {
+        "name": "Phase 3: Content & Authority",
+        "timeframe": "Month 2",
+        "items": [
+          "Publish 20–30 prompt templates from content/templates/ with reasoning attached; measure indexation before scaling (do not bulk-publish 1,000 thin pages)",
+          "Publish the French site on its own URLs with hreflang, localised metadata and both locales in the sitemap",
+          "Build E-E-A-T: About page, dates on FAQ articles via an updatedAt field, authorship on library content",
+          "Rewrite /build, /pricing and /faq titles for search intent, one page at a time",
+          "Replace the build-time lastmod in sitemap.ts with real updatedAt dates",
+          "Add per-page Open Graph images for /pricing and the FAQ articles",
+          "Add llms.txt (lowest priority — a proposed convention with no confirmed platform adoption)",
+          "Decide the Cluster 1 question: let the first generation run without an account (makes the transactional SERP winnable), or deliberately cede that cluster and target qualified variants instead - see findings/sxo.md"
+        ]
+      },
+      {
+        "name": "Phase 4: Monitoring & Iteration",
+        "timeframe": "Ongoing",
+        "items": [
+          "Weekly: GSC Pages indexation trend, Performance impressions/clicks/position, new Coverage errors",
+          "Monthly: re-run this audit, PageSpeed Insights on / and /pricing, re-validate structured data, check AI assistant citations for category queries",
+          "Every deploy: confirm canonicals still resolve to https://yelhaa.info — this regression already happened once — and confirm X-Vercel-Cache: HIT on marketing pages",
+          "Capture a drift baseline once Phase 1 lands: claude-seo run drift_baseline.py https://yelhaa.info/",
+          "A drift baseline was captured 2026-09-12 for /, /pricing, /build and /faq - run `claude-seo run drift_compare.py <url>` after the Phase 1 deploy to confirm the canonical, robots and title changes landed as intended and nothing else regressed"
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "PageSpeed Insights rate-limited on four separate attempts across two days (no PAGESPEED_API_KEY configured; shared quota exhausted). CrUX needs credentials that are not set up. No field or lab Core Web Vitals anywhere in this audit - run https://pagespeed.web.dev/ manually.",
+    "No Google Search Console or GA4 credentials — no indexation status, impressions, clicks or organic traffic data",
+    "No Moz or Bing Webmaster credentials — no backlink, referring-domain, anchor-text or toxicity analysis",
+    "No DataForSEO access — no live SERP positions or keyword volumes; category demand described qualitatively",
+    "Crawl covered 22 URLs, the site's full public surface — no pages were missed",
+    "Schema type statuses verified against the plugin's June 2026 reference on 2026-09-12; the 2026-09-11 FAQPage recommendation was made without that check and has been corrected throughout",
+    "Backlink analysis is Tier 0 (Common Crawl only) - no referring domains, anchor text, toxic links or competitor gap. Bing Webmaster Tools (free) is the cheapest way to unlock these.",
+    "The 2026-09-11 observations suggesting a rendering failure were instrumentation artifacts (throttled hidden browser tab; Playwright idle-wait on a page with perpetual animations) and were retracted after a dedicated probe on 2026-09-12 - see findings/ssr-hydration.md."
+  ],
+  "artifacts": {
+    "findings_dir": "findings/",
+    "screenshots_dir": "screenshots/",
+    "content_report": "CONTENT-REPORT.md",
+    "schema_report": "SCHEMA-REPORT.md",
+    "generated_schema": "generated-schema.json",
+    "geo_analysis": "GEO-ANALYSIS.md",
+    "sxo": "findings/sxo.md",
+    "backlinks": "findings/backlinks.md",
+    "ssr_hydration": "findings/ssr-hydration.md"
+  }
+}

@@ -451,9 +451,25 @@ html[data-theme="light"] .hover\:bg-white:hover {
     }
   }
 
-  .reveal {
-    opacity: 0;
-    transform: translateY(12px);
+  /*
+   * L'état masqué n'est appliqué que si un script peut le lever.
+   *
+   * `reveal.tsx` pose `.is-visible` via un `IntersectionObserver`. Sans
+   * exécution de script — JS désactivé, onglet fortement bridé, lecture
+   * automatisée — cet observateur ne tourne jamais et un `opacity: 0`
+   * inconditionnel laisserait la section définitivement invisible. La
+   * requête `scripting` conditionne donc le masquage à la présence d'un
+   * script : l'état de repos redevient l'état final, comme le documente
+   * `components/site/reveal.tsx`.
+   *
+   * Un navigateur qui ne connaît pas `scripting` ne matche pas la règle et
+   * affiche le contenu sans animation. C'est la dégradation souhaitée.
+   */
+  @media (scripting: enabled) {
+    .reveal {
+      opacity: 0;
+      transform: translateY(12px);
+    }
   }
   .reveal.is-visible {
     opacity: 1;

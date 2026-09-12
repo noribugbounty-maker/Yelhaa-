@@ -1,0 +1,175 @@
+{
+  "_README": {
+    "purpose": "Ready-to-use JSON-LD for yelhaa.info. Replace the existing objects in components/seo/json-ld.tsx.",
+    "generated": "2026-09-12",
+    "important": "All URLs below assume NEXT_PUBLIC_SITE_URL=https://yelhaa.info is set in Vercel Production. In code, keep building them with absoluteUrl() rather than hardcoding the domain — the existing pattern is correct.",
+    "not_included_and_why": {
+      "FAQPage": "Google retired FAQ rich results for ALL sites on 2026-05-07. No SERP feature exists, and any AI-citation benefit is unconfirmed. The codebase already documents this decision in components/seo/json-ld.tsx — it is correct. Do not add.",
+      "QAPage": "Reserved for genuine user Q&A pages where visitors submit answers. The /faq/[slug] pages are publisher-authored single answers with no user submissions, so QAPage would misdescribe them.",
+      "HowTo": "Rich results removed September 2023. Never recommend.",
+      "AggregateRating": "Omitted deliberately. Do not add until real, verifiable ratings are displayed on the page — marking up invisible ratings is a structured-data violation and risks a manual action.",
+      "Product": "Not applicable. SoftwareApplication is the correct type for a SaaS product."
+    }
+  },
+
+  "organization": {
+    "_where": "Homepage — replaces the Organization block in OrganizationJsonLd()",
+    "_status": "ACTIVE type. Adds sameAs, contactPoint, description, foundingDate to the existing name/url/slogan/logo.",
+    "_note": "sameAs is the field that links the site to its social profiles and disambiguates the brand entity. Populate from the NEXT_PUBLIC_URL_* env vars lib/config.ts already reads, filtering empty values. Leave the array empty until real profiles exist — never invent them.",
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Yelhaa",
+    "url": "https://yelhaa.info",
+    "logo": "https://yelhaa.info/brand/picto.svg",
+    "slogan": "Better prompts. Better AI outputs.",
+    "description": "Yelhaa turns your ideas into better prompts, for better results with AI.",
+    "sameAs": [],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer support",
+      "url": "https://yelhaa.info/contact",
+      "availableLanguage": ["en", "fr"]
+    }
+  },
+
+  "website": {
+    "_where": "Homepage — the existing WebSite block, with publisher added",
+    "_status": "ACTIVE type. Correct as-is; publisher ties it to the Organization entity.",
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Yelhaa",
+    "url": "https://yelhaa.info",
+    "inLanguage": "en",
+    "publisher": { "@id": "https://yelhaa.info/#organization" }
+  },
+
+  "software_application": {
+    "_where": "/pricing — replaces the SoftwareApplication block in PricingJsonLd()",
+    "_status": "ACTIVE type. Adds description and wraps the three Offers in AggregateOffer so the price range is machine-legible.",
+    "_note": "Prices verified against lib/config.ts, the pricing page and /faq/plans-and-quotas — all three agree. Keep generating them from PLANS so they cannot drift.",
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Yelhaa",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Web",
+    "url": "https://yelhaa.info/pricing",
+    "description": "Yelhaa turns your ideas into better prompts, for better results with AI.",
+    "publisher": { "@id": "https://yelhaa.info/#organization" },
+    "offers": {
+      "@type": "AggregateOffer",
+      "lowPrice": "0",
+      "highPrice": "39.99",
+      "priceCurrency": "USD",
+      "offerCount": 3,
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Free",
+          "price": "0",
+          "priceCurrency": "USD",
+          "url": "https://yelhaa.info/pricing",
+          "category": "Free"
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro",
+          "price": "9.99",
+          "priceCurrency": "USD",
+          "url": "https://yelhaa.info/pricing",
+          "category": "Subscription"
+        },
+        {
+          "@type": "Offer",
+          "name": "Agency",
+          "price": "39.99",
+          "priceCurrency": "USD",
+          "url": "https://yelhaa.info/pricing",
+          "category": "Subscription"
+        }
+      ]
+    }
+  },
+
+  "breadcrumb_faq_article": {
+    "_where": "/faq/[slug] — the existing FaqBreadcrumbJsonLd(), unchanged in structure",
+    "_status": "ACTIVE type with a live rich result. Already implemented correctly; only the URLs are wrong (localhost).",
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://yelhaa.info" },
+      { "@type": "ListItem", "position": 2, "name": "FAQ", "item": "https://yelhaa.info/faq" },
+      { "@type": "ListItem", "position": 3, "name": "What is Yelhaa?", "item": "https://yelhaa.info/faq/what-is-yelhaa" }
+    ]
+  },
+
+  "breadcrumb_generic": {
+    "_where": "NEW — /pricing, /build, /contact, /legal/*",
+    "_status": "ACTIVE type with a live rich result. Extend the existing FAQ breadcrumb component to a generic one.",
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://yelhaa.info" },
+      { "@type": "ListItem", "position": 2, "name": "Pricing", "item": "https://yelhaa.info/pricing" }
+    ]
+  },
+
+  "contact_page": {
+    "_where": "NEW — /contact",
+    "_status": "ACTIVE type.",
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    "name": "Contact",
+    "url": "https://yelhaa.info/contact",
+    "description": "A question about the product, a remark, or a problem with your account — write to us and we read everything.",
+    "isPartOf": { "@id": "https://yelhaa.info/#website" },
+    "about": { "@id": "https://yelhaa.info/#organization" }
+  },
+
+  "profile_page_about": {
+    "_where": "NEW — only once an About page exists (see findings/content.md, E-E-A-T)",
+    "_status": "ACTIVE type. Supports the authorship and entity signals currently missing sitewide.",
+    "_note": "PLACEHOLDERS below must be replaced with real values. Do not publish invented names, roles or dates.",
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    "url": "https://yelhaa.info/about",
+    "mainEntity": {
+      "@type": "Person",
+      "name": "[REPLACE: founder or team lead name]",
+      "jobTitle": "[REPLACE: role]",
+      "description": "[REPLACE: one-sentence background]",
+      "url": "https://yelhaa.info/about",
+      "sameAs": []
+    }
+  },
+
+  "article_template": {
+    "_where": "NEW — for prompt-library entries and guides when published (see findings/content.md)",
+    "_status": "ACTIVE type. This is where the real schema upside is, once the content in content/templates/ ships.",
+    "_note": "PLACEHOLDERS must be replaced. datePublished/dateModified must be genuine — undated or falsely dated content is discounted.",
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "[REPLACE: article title, under 110 characters]",
+    "description": "[REPLACE: one-sentence summary]",
+    "url": "https://yelhaa.info/[REPLACE: path]",
+    "datePublished": "[REPLACE: YYYY-MM-DD]",
+    "dateModified": "[REPLACE: YYYY-MM-DD]",
+    "inLanguage": "en",
+    "author": {
+      "@type": "Person",
+      "name": "[REPLACE: real author name]"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Yelhaa",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://yelhaa.info/brand/picto.svg"
+      }
+    },
+    "image": "https://yelhaa.info/opengraph-image",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "https://yelhaa.info/[REPLACE: path]"
+    }
+  }
+}
